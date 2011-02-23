@@ -17,7 +17,7 @@
 
 int main(int argc, char *argv[]){
   int numProcs, rank;
-  double start_time, end_time, processing_time;
+  double startTime, end_time, processing_time;
 
   MPI_Init(&argc, &argv);
   MPI_Comm commRail; // Init communicator
@@ -26,10 +26,11 @@ int main(int argc, char *argv[]){
   MPI_Comm_split( MPI_COMM_WORLD, rank == 0, 0, &commRail ); // Create communicator 
 
   if(rank == 0){ // I am the master then
-    master(MPI_COMM_WORLD, commRail);
+    startTime = MPI_Wtime(); // Get the start time
+    master(MPI_COMM_WORLD, commRail); // Call the master function
   }
   else{ // Crap, I'm a node then
-    node(MPI_COMM_WORLD, commRail);
+    node(MPI_COMM_WORLD, commRail); // Call the node function
   }
   MPI_Finalize();
   return 0;
@@ -59,9 +60,25 @@ int node(mCommunicator, commToUse)
 MPI_Comm commToUse;
 {
     char buf[256];
-    int	 rank;
-    
+    int	 rank, i, interation;
+    int ADD = 1; // 1= true 2 == false make this bool later
+    double pi;
+
     MPI_Comm_rank(commToUse, &rank);
+    
+    for(i=0;i<999999; i++){ // 99999 then is the number of terms.
+      switch(ADD){
+	case 1:
+	  pi += (4.0/((i*2)+1));
+	  ADD = 2;
+	  break;
+	case 2:
+	  pi -= (4.0/((i*2)+1));
+	  ADD =1;
+	  break;
+      }
+    }
+     printf("PI: %lf\n", pi);
     
     sprintf(buf, "Hello from slave %d\n", rank);
     MPI_Send(buf, strlen(buf) + 1, MPI_CHAR, 0, 0, mCommunicator);
