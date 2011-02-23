@@ -14,77 +14,77 @@
  ******************************************************************************/
 #include <stdio.h>
 #include <mpi.h>
+#include <stdbool.h> // Needed for bool datatype wtf c, wtf
 
 int main(int argc, char *argv[]){
-  int numProcs, rank;
-  double startTime, end_time, processing_time;
+  int numProcs, procRank, iterations;
+  double startTime, endTime, processingTime;
 
-  MPI_Init(&argc, &argv);
+  MPI_Init(&argc, &argv); // Init MPI
   MPI_Comm commRail; // Init communicator
-  MPI_Comm_size(MPI_COMM_WORLD, &numProcs); // Total number of processes
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank); // Which process am I?
-  MPI_Comm_split( MPI_COMM_WORLD, rank == 0, 0, &commRail ); // Create communicator 
+  MPI_Comm_size(MPI_COMM_WORLD, &numProcs); // Get the total number of processes
+  MPI_Comm_rank(MPI_COMM_WORLD, &procRank); // Which process am I?
+  MPI_Comm_split(MPI_COMM_WORLD, procRank == 0, 0, &commRail); // Create communicator out of COMM_WORLD 
 
-  if(rank == 0){ // I am the master then
-    startTime = MPI_Wtime(); // Get the start time
-    master(MPI_COMM_WORLD, commRail); // Call the master function
+  if(procRank == 0){ // Master, Blaster rule Thunderdome!!
+    startTime = MPI_Wtime(); 
+    masterProc(MPI_COMM_WORLD, commRail); 
+    endTime = MPI_Wtime();
+    processingTime = endTime - startTime; 
+    printf("%d Processes calculated PI in: %lf Seconds\n", numProcs - 1, processingTime);
   }
-  else{ // Crap, I'm a node then
-    node(MPI_COMM_WORLD, commRail); // Call the node function
+  
+  else{ // Crap, I'm a worker bee. better get to work!
+    iterations = 9999;
+    nodeProc(MPI_COMM_WORLD, commRail, iterations); 
   }
+  
   MPI_Finalize();
   return 0;
 }
 
-// Master 
-int master(mCommunicator, commToUse)
+// Master Process
+int masterProc(mCommunicator, commToUse)
 MPI_Comm commToUse;
 {
-  int  i,j, size;
+  int  i, size;
   char buf[256];
   
   MPI_Status status;
   MPI_Comm_size(mCommunicator, &size);
   
-  //for (j=1; j<=2; j++) {
-    for (i=1; i<size; i++) {
+    for (i=1; i<size; i++) { // Recive 1 message from all node processes
       MPI_Recv(buf, 256, MPI_CHAR, i, 0, mCommunicator, &status);
       fputs(buf, stdout);
     }
-  //}
-  printf("this is the end of exec\n");
 }
   
-// Node
-int node(mCommunicator, commToUse)
+// Node Process
+int nodeProc(mCommunicator, commToUse, iterations)
 MPI_Comm commToUse;
 {
     char buf[256];
-    int	 rank, i, interation;
-    int ADD = 1; // 1= true 2 == false make this bool later
+    int	 rank, i;
+    bool toggle = true; // 0 = ADD 1 = SUB
     double pi;
 
     MPI_Comm_rank(commToUse, &rank);
-    
-    for(i=0;i<999999; i++){ // 99999 then is the number of terms.
-      switch(ADD){
-	case 1:
+   
+    for(i = 0;i < iterations; i++){ 
+      switch(toggle){
+	case true:
 	  pi += (4.0/((i*2)+1));
-	  ADD = 2;
+	  toggle = false;
 	  break;
-	case 2:
+	case false:
 	  pi -= (4.0/((i*2)+1));
-	  ADD =1;
+	  toggle = true;
 	  break;
       }
     }
-     printf("PI: %lf\n", pi);
     
-    sprintf(buf, "Hello from slave %d\n", rank);
+    sprintf(buf, "Node %d got %lf for PI\n", rank + 1, pi);
     MPI_Send(buf, strlen(buf) + 1, MPI_CHAR, 0, 0, mCommunicator);
-    
-   // sprintf(buf, "Goodbye from slave %d\n", rank);
-    //MPI_Send(buf, strlen(buf) + 1, MPI_CHAR, 0, 0, mCommunicator);
     return 0;
 }
 
